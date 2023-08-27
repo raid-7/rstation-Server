@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package rstation;
+
+message Measurement {
+    string sensor = 1;
+    float value = 2;
+    uint64 timestamp_us = 3;
+}
+
+message MeasurementSet {
+    repeated Measurement measurements = 1;
+}
