@@ -28,7 +28,9 @@ async fn post_measurements(req_body: Bytes, data: web::Data<MeasurementsState>) 
 async fn get_measurements(data: web::Data<MeasurementsState>) -> impl Responder {
     let state = data.set.lock().unwrap();
     let body = state.encode_to_vec();
-    HttpResponse::Ok().body(body)
+    HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(body)
 }
 
 
