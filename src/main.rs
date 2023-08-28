@@ -41,6 +41,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(measurements_state.clone())
             .service(hello)
+            .service(get_measurements)
             .service(post_measurements)
     })
     .workers(2)
