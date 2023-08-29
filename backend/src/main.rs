@@ -108,14 +108,14 @@ fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Re
     Ok(res)
 }
 
-#[post("/weather/measurements")]
+#[post("/api/measurements")]
 async fn post_measurements(req_body: Bytes, data: web::Data<DbState>) -> Result<HttpResponse, std::io::Error> {
     let ms = rstation::MeasurementSet::decode(req_body)?;
     db_insert_measurements(&ms.measurements, &*data)?;
     Ok(HttpResponse::Ok().body(format!("Got {}", ms.measurements.len())))
 }
 
-#[get("/weather/measurements")]
+#[get("/api/measurements")]
 async fn get_measurements(data: web::Data<DbState>, query: web::Query<GetMeasurementsQuery>) -> Result<HttpResponse, std::io::Error> {
     let response = rstation::MeasurementSet {
         measurements: fetch_measurements(&*data, &*query)?
