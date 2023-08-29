@@ -1,0 +1,21 @@
+{
+  "name": "r_station",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "protobufjs": "~7.2.5",
+    "vue": "^3.3.4",
+    "vue-chartjs": "^5.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.3.1",
+    "protobufjs-cli": "~1.1.2",
+    "vite": "^4.4.9"
+  }
+}
