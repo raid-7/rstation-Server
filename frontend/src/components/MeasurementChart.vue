@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { Line } from 'vue-chartjs'
 import { rstation } from '../protos'
 import { Chart as ChartJS } from 'chart.js/auto'
+import 'chartjs-adapter-dayjs-4/dist/chartjs-adapter-dayjs-4.esm'
 window.rstation = rstation;
 
 let props = defineProps(['sensor']);
@@ -28,7 +29,9 @@ async function fetchData(sensor, from, to) {
   for (let m of data.measurements) {
     if (!res[m.sensor])
       res[m.sensor] = [];
-    res[m.sensor].push(m);
+    let mObj = rstation.Measurement.toObject(m);
+    mObj.timestampMs = mObj.timestampUs / 1000;
+    res[m.sensor].push(mObj);
   }
   return res;
 }
@@ -41,17 +44,22 @@ let chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   parsing: {
-    xAxisKey: 'timestampUs',
+    xAxisKey: 'timestampMs',
     yAxisKey: 'value'
   },
   scales: {
     x: {
-        type: 'linear'
+        type: 'time'
+        // time: {
+        //     displayFormats: {
+        //         quarter: 'MMM YYYY'
+        //     }
+        // }
     }
   }
 };
 
-fetchData(props.sensor)
+fetchData(props.sensor, (new Date() - 10*60*1000) * 1000)
     .then((data) => {
         console.log(data);
         for (let sensor in data) {
