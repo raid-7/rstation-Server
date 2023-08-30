@@ -1,7 +1,7 @@
 <script setup>
 import MeasurementChart from './components/MeasurementChart.vue'
 
-let sensors = ['exp.', 'test'];
+let sensors = ['random.', 'adc'];
 </script>
 
 <template>
