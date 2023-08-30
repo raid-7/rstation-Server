@@ -25,6 +25,7 @@ a,
   body {
     display: flex;
     align-items: flex-start;
+    max-width: 1280px;
   }
 
   #app {

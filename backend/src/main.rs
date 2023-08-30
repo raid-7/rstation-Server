@@ -1,6 +1,7 @@
 use std::{ops::RangeBounds, ops::Bound};
 
 use actix_web::{get, post, web::{self, Bytes}, App, HttpResponse, HttpServer};
+use actix_files::Files;
 use prost::Message;
 use serde::Deserialize;
 
@@ -147,6 +148,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(db_state.clone())
             .service(get_measurements)
             .service(post_measurements)
+            .service(Files::new("/", "../frontend/dist").index_file("index.html"))
     })
     .workers(num_workers)
     .bind(("0.0.0.0", port))?

@@ -1,35 +1,23 @@
 <script setup>
-import { Line } from 'vue-chartjs'
-import { Chart as ChartJS } from 'chart.js/auto'
+import MeasurementChart from './components/MeasurementChart.vue'
 
-let chartData = {
-  labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-  datasets: [{
-    label: '# of Votes',
-    data: [12, 19, 3, 5, 2, 3],
-    borderWidth: 1
-  }]
-};
-
-let chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false
-  // scales: {
-  //   y: {
-  //     beginAtZero: true
-  //   }
-  // }
-};
+let sensors = ['exp.', 'test'];
 </script>
 
 <template>
-  <div class="chart-container">
-    <Line id="chart" :options="chartOptions" :data="chartData" />
+  <div class="charts">
+    <MeasurementChart v-for="sensor in sensors" :sensor="sensor" />
   </div>
 </template>
 
 <style scoped>
-.chart-container {
-  height: 320px;
+.charts {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.charts MeasurementChart {
+  flex-grow: 0;
 }
 </style>
