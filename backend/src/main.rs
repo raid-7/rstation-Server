@@ -5,6 +5,8 @@ use actix_files::Files;
 use prost::Message;
 use serde::Deserialize;
 
+const MAX_POINTS_TO_PROCESS: usize = 100_000_000;
+
 pub mod rstation {
     include!(concat!(env!("OUT_DIR"), "/rstation.rs"));
 }
@@ -76,8 +78,29 @@ fn db_iter_to_vec(iter: sled::Iter) -> std::io::Result<Vec<rstation::Measurement
     for m_res in iter.values() {
         let m_enc = m_res?;
         res.push(rstation::Measurement::decode(&m_enc[..])?);
+        if res.len() >= MAX_POINTS_TO_PROCESS {
+            break;
+        }
     }
     Ok(res)
+}
+
+fn prune_measurements(measurements: Vec<rstation::Measurement>, limit: usize) -> Vec<rstation::Measurement> {
+    let len = measurements.len();
+    if len <= limit {
+        return measurements;
+    }
+    let mut res = Vec::new();
+    let skip_div = (len + limit - 1usize) / limit;
+    let got_from_skip_div = (len - 1) / skip_div + 1;
+    let rest = limit - got_from_skip_div;
+    for (i, m) in measurements.into_iter().enumerate() {
+        if i % skip_div == 0 ||
+            i % skip_div == (skip_div + 1) / 2 && i >= (len - skip_div * rest) {
+            res.push(m);
+        }
+    }
+    res
 }
 
 
@@ -86,6 +109,7 @@ struct GetMeasurementsQuery {
     sensor: Option<String>,
     from: Option<u64>,
     to: Option<u64>,
+    max_num_points: Option<usize>
 }
 
 fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Result<Vec<rstation::Measurement>> {
@@ -105,6 +129,11 @@ fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Re
         db_iter_to_vec(db_fetch_measurements_by_sensor(db, query.sensor.as_ref().unwrap()))?
     } else {
         db_iter_to_vec(db.ts_prefixed_tree.iter())?
+    };
+    let res = if let Some(limit) = query.max_num_points {
+        prune_measurements(res, limit)
+    } else {
+        res
     };
     Ok(res)
 }
