@@ -60,10 +60,15 @@ async function fetchData(sensor, from, to) {
     let res = {};
     let lastMeasurement = null;
     for (let m of data.measurements) {
+        let mObj = rstation.Measurement.toObject(m);
+        if (!mObj.hasOwnProperty('sensor') || !mObj.hasOwnProperty('timestampUs'))
+            continue;
+        if (!mObj.hasOwnProperty('value'))
+            mObj.value = 0.0;
+        mObj.timestampMs = Math.round(mObj.timestampUs / 1000);
+
         if (!res[m.sensor])
             res[m.sensor] = [];
-        let mObj = rstation.Measurement.toObject(m);
-        mObj.timestampMs = Math.round(mObj.timestampUs / 1000);
         res[m.sensor].push(mObj);
         lastMeasurement = mObj;
     }
@@ -132,6 +137,19 @@ const chartOptions = {
                 }
             }
         }
+    },
+    plugins: {
+        legend: {
+            position: 'bottom',
+            align: 'end',
+            labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                font: {
+                    size: 14
+                }
+            }
+        }
     }
 };
 
@@ -187,7 +205,6 @@ function reload(full) {
 }
 
 watch(viewPeriodMs, (nv) => {
-    console.log("CHANGE PERIOD", nv, viewPeriodMs.value);
     reload(true);
 }, { immediate: true })
 
