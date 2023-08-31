@@ -30,7 +30,10 @@ function isViewPeriodButtonActive(value) {
         :data-value="conf.value" :class="{active : isViewPeriodButtonActive(conf.value)}">{{ conf.label }}</button>
     </div>
     <div class="charts">
-      <MeasurementChart v-for="sensor in sensors" :sensor="sensor" :view-period-ms="viewPeriodMs" unit="tu" precision="1" />
+      <template v-for="i in sensors.length" >
+        <MeasurementChart :sensor="sensors[i-1]" :view-period-ms="viewPeriodMs" unit="tu" precision="1" />
+        <div class="glue" v-if="i != sensors.length"></div>
+      </template>
     </div>
   </div>
 </template>
@@ -41,6 +44,7 @@ function isViewPeriodButtonActive(value) {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
+  gap: 20px;
 }
 
 .common-settings {
@@ -63,5 +67,11 @@ function isViewPeriodButtonActive(value) {
 
 .charts MeasurementChart {
   flex-grow: 0;
+}
+
+.charts .glue {
+  height: 3px;
+  background: rgb(114,114,114);
+  background: radial-gradient(ellipse 70% 19% at 40% 50%, rgba(150,150,150,0.6) 0%, rgba(150,150,150,0.6) 70%, rgba(255,255,255,0.6) 100%); 
 }
 </style>

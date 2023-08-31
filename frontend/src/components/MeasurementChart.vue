@@ -159,14 +159,19 @@ function reload(full) {
             if (data.lastMeasurement) {
                 lastUpdateTs = data.lastMeasurement.timestampUs + 1;
             }
+
+            const nextReload = () => {
+                if (!abortHandle.abort)
+                    reload();
+            };
             if (lineChart.value) {
-                setTimeout(reload, nextFetchDelay);
+                setTimeout(nextReload, nextFetchDelay);
                 updateChart(data, full);
             } else {
                 onMounted(() => {
                     if (abortHandle.abort)
                         return;
-                    setTimeout(reload, nextFetchDelay);
+                    setTimeout(nextReload, nextFetchDelay);
                     updateChart(data, full);
                 });
             }
@@ -181,7 +186,8 @@ function reload(full) {
         });
 }
 
-watch(viewPeriodMs, () => {
+watch(viewPeriodMs, (nv) => {
+    console.log("CHANGE PERIOD", nv, viewPeriodMs.value);
     reload(true);
 }, { immediate: true })
 
@@ -214,7 +220,7 @@ window.reloadData = () => {
     gap: 20px;
 }
 .stats-container {
-    width: 300px;
+    width: fit-content;
     flex-shrink: 1;
     flex-grow: 0.1;
 
