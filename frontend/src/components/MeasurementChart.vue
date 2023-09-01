@@ -237,6 +237,7 @@ window.reloadData = () => {
     gap: 20px;
 }
 .stats-container {
+    min-width: 220px;
     width: fit-content;
     flex-shrink: 1;
     flex-grow: 0.1;
