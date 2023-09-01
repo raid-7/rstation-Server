@@ -1,103 +1,32 @@
-use std::{ops::RangeBounds, ops::Bound};
+use r_station::db;
+use r_station::rstation;
+
+use std::ops::Bound;
 
 use actix_web::{get, post, web::{self, Bytes}, App, HttpResponse, HttpServer};
 use actix_files::Files;
 use prost::Message;
+use itertools::Itertools;
 use serde::Deserialize;
 
-const MAX_POINTS_TO_PROCESS: usize = 100_000_000;
-
-pub mod rstation {
-    include!(concat!(env!("OUT_DIR"), "/rstation.rs"));
-}
-
-fn get_ts_prefixed_key(m: &rstation::Measurement) -> Vec<u8> {
-    let mut res = Vec::with_capacity(8 + m.sensor.len());
-    res.extend(m.timestamp_us.to_be_bytes());
-    res.extend(m.sensor.as_bytes());
-    res
-}
-
-fn get_sensor_prefixed_key(m: &rstation::Measurement) -> Vec<u8> {
-    let mut res = Vec::with_capacity(9 + m.sensor.len());
-    res.extend(m.sensor.as_bytes());
-    res.push(0);
-    res.extend(m.timestamp_us.to_be_bytes());
-    res
-}
-
-struct DbState {
-    ts_prefixed_tree: sled::Tree,
-    sensor_prefixed_tree: sled::Tree
-}
-
-fn db_insert_measurements(measurements: &Vec<rstation::Measurement>, db: &DbState) -> std::io::Result<()> {
-    let mut ts_batch = sled::Batch::default();
-    let mut sensor_batch = sled::Batch::default();
-    let mut buf = Vec::new();
-
-    for m in measurements {
-        if m.timestamp_us == 0 {
-            continue;
-        }
-        buf.clear();
-        m.encode(&mut buf).unwrap();
-        ts_batch.insert(get_ts_prefixed_key(m), &buf[..]);
-        sensor_batch.insert(get_sensor_prefixed_key(m), &buf[..]);
-    }
-
-    db.ts_prefixed_tree.apply_batch(ts_batch)?;
-    db.sensor_prefixed_tree.apply_batch(sensor_batch)?;
-    Ok(())
-}
-
-fn ts_bound_to_key(bound: Bound<&u64>, end: bool) -> Bound<[u8; 8]> {
-    match bound {
-        Bound::Included(v) => if end {
-            Bound::Excluded((v + 1).to_be_bytes())
-        } else {
-            Bound::Included(v.to_be_bytes())
-        },
-        Bound::Excluded(v) => Bound::Excluded(v.to_be_bytes()),
-        Bound::Unbounded => Bound::Unbounded
-    }
-}
-
-fn db_fetch_measurements_by_ts(db: &DbState, ts: impl RangeBounds<u64>) -> sled::Iter {
-    let begin_buf = ts_bound_to_key(ts.start_bound(), false);
-    let end_buf = ts_bound_to_key(ts.end_bound(), true);
-    db.ts_prefixed_tree.range((begin_buf, end_buf))
-}
-
-fn db_fetch_measurements_by_sensor(db: &DbState, sensor_prefix: &String) -> sled::Iter {
-    db.sensor_prefixed_tree.scan_prefix(sensor_prefix.as_bytes())
-}
-
-fn db_iter_to_vec(iter: sled::Iter) -> std::io::Result<Vec<rstation::Measurement>> {
-    let mut res = Vec::new();
-    for m_res in iter.values() {
-        let m_enc = m_res?;
-        res.push(rstation::Measurement::decode(&m_enc[..])?);
-        if res.len() >= MAX_POINTS_TO_PROCESS {
-            break;
-        }
-    }
-    Ok(res)
-}
 
 fn prune_measurements(measurements: Vec<rstation::Measurement>, limit: usize) -> Vec<rstation::Measurement> {
     let len = measurements.len();
     if len <= limit {
         return measurements;
     }
+    let measurements = measurements.into_iter()
+        .into_group_map_by(|m| m.sensor.clone());
     let mut res = Vec::new();
     let skip_div = (len + limit - 1usize) / limit;
     let got_from_skip_div = (len - 1) / skip_div + 1;
     let rest = limit - got_from_skip_div;
-    for (i, m) in measurements.into_iter().enumerate() {
-        if i % skip_div == 0 ||
-            i % skip_div == (skip_div + 1) / 2 && i >= (len - skip_div * rest) {
-            res.push(m);
+    for (_, sensor_measurements) in measurements {
+        for (i, m) in sensor_measurements.into_iter().enumerate() {
+            if i % skip_div == 0 ||
+                i % skip_div == (skip_div + 1) / 2 && i >= (len - skip_div * rest) {
+                res.push(m);
+            }
         }
     }
     res
@@ -109,16 +38,15 @@ struct GetMeasurementsQuery {
     sensor: Option<String>,
     from: Option<u64>,
     to: Option<u64>,
-    max_num_points: Option<usize>
+    max_num_points_per_sensor: Option<usize>
 }
 
-fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Result<Vec<rstation::Measurement>> {
+fn fetch_measurements(db: &db::DbState, query: &GetMeasurementsQuery) -> std::io::Result<Vec<rstation::Measurement>> {
     let res = if query.from.is_some() || query.to.is_some() {
-        let iter = db_fetch_measurements_by_ts(db, (
+        let ms = db::fetch_measurements_by_ts(db, (
             query.from.map_or(Bound::Unbounded, |t| Bound::Included(t)),
             query.to.map_or(Bound::Unbounded, |t| Bound::Included(t))
-        ));
-        let ms = db_iter_to_vec(iter)?;
+        ))?;
         match &query.sensor {
             Some(prefix) => ms.into_iter()
                 .filter(|m| m.sensor.starts_with(prefix))
@@ -126,11 +54,11 @@ fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Re
             None => ms
         }
     } else if query.sensor.is_some() {
-        db_iter_to_vec(db_fetch_measurements_by_sensor(db, query.sensor.as_ref().unwrap()))?
+        db::fetch_measurements_by_sensor(db, query.sensor.as_ref().unwrap())?
     } else {
-        db_iter_to_vec(db.ts_prefixed_tree.iter())?
+        db::fetch_all_measurements(db)?
     };
-    let res = if let Some(limit) = query.max_num_points {
+    let res = if let Some(limit) = query.max_num_points_per_sensor {
         prune_measurements(res, limit)
     } else {
         res
@@ -139,14 +67,15 @@ fn fetch_measurements(db: &DbState, query: &GetMeasurementsQuery) -> std::io::Re
 }
 
 #[post("/api/measurements")]
-async fn post_measurements(req_body: Bytes, data: web::Data<DbState>) -> Result<HttpResponse, std::io::Error> {
+async fn post_measurements(req_body: Bytes, data: web::Data<db::DbState>) -> Result<HttpResponse, std::io::Error> {
     let ms = rstation::MeasurementSet::decode(req_body)?;
-    db_insert_measurements(&ms.measurements, &*data)?;
-    Ok(HttpResponse::Ok().body(format!("Got {}", ms.measurements.len())))
+    let sz = ms.measurements.len();
+    db::insert_measurements(ms.measurements, &*data)?;
+    Ok(HttpResponse::Ok().body(format!("Got {}", sz)))
 }
 
 #[get("/api/measurements")]
-async fn get_measurements(data: web::Data<DbState>, query: web::Query<GetMeasurementsQuery>) -> Result<HttpResponse, std::io::Error> {
+async fn get_measurements(data: web::Data<db::DbState>, query: web::Query<GetMeasurementsQuery>) -> Result<HttpResponse, std::io::Error> {
     let response = rstation::MeasurementSet {
         measurements: fetch_measurements(&*data, &*query)?
     };
@@ -168,10 +97,7 @@ async fn main() -> std::io::Result<()> {
         .map_or(2, |s| s.parse::<usize>().unwrap());
 
     let db = sled::open(db_path).unwrap();
-    let db_state = web::Data::new(DbState{
-        ts_prefixed_tree: db.open_tree("measurements-timestamp-prefixed").unwrap(),
-        sensor_prefixed_tree: db.open_tree("measurements-sensor-prefixed").unwrap(),
-    });
+    let db_state = web::Data::new(db::DbState::new(&db).unwrap());
     HttpServer::new(move || {
         App::new()
             .app_data(db_state.clone())

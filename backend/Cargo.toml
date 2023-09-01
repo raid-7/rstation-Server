@@ -9,6 +9,7 @@ actix-files = "0.6"
 prost = "0.11"
 sled = "0.34"
 serde = { version = "1.0", features = ["derive"] }
+itertools = "0.11"
 
 [build-dependencies]
 prost-build = "0.11"
