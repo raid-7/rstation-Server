@@ -1,0 +1,18 @@
+version: "3"
+services:
+  rstation:
+    build: backend
+    container_name: rstation-server
+    image: rstation-server
+    ports:
+      - 8080:8080
+    volumes:
+      - db:/appdata/db
+    environment:
+      - APP_DB_PATH=/appdata/db
+      - APP_PORT=8080
+      - APP_WORKERS=2
+    command: r_station
+
+volumes:
+  db:
