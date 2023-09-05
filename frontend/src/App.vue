@@ -30,10 +30,11 @@ function isViewPeriodButtonActive(value) {
         :data-value="conf.value" :class="{active : isViewPeriodButtonActive(conf.value)}">{{ conf.label }}</button>
     </div>
     <div class="charts">
-      <template v-for="i in sensors.length" >
-        <MeasurementChart :sensor="sensors[i-1]" :view-period-ms="viewPeriodMs" unit="tu" precision="1" />
+        <MeasurementChart :sensor="temperature." :view-period-ms="viewPeriodMs" unit="°C" precision="1" />
         <div class="glue" v-if="i != sensors.length"></div>
-      </template>
+        <MeasurementChart :sensor="humidity." :view-period-ms="viewPeriodMs" unit="%" precision="1" />
+        <div class="glue" v-if="i != sensors.length"></div>
+        <MeasurementChart :sensor="adc" :view-period-ms="viewPeriodMs" unit="V" precision="1" />
     </div>
   </div>
 </template>
