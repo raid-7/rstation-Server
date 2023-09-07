@@ -3,7 +3,7 @@ use r_station::rstation;
 
 use std::ops::Bound;
 
-use actix_web::{get, post, web::{self, Bytes}, App, HttpResponse, HttpServer};
+use actix_web::{get, post, web::{self, Bytes, Header}, http, App, HttpResponse, HttpServer};
 use actix_files::Files;
 use prost::Message;
 use itertools::Itertools;
@@ -41,6 +41,46 @@ struct GetMeasurementsQuery {
     max_num_points_per_sensor: Option<usize>
 }
 
+#[derive(Clone)]
+struct XAuthorizedDevice {
+    authorized: bool
+}
+
+impl http::header::TryIntoHeaderValue for XAuthorizedDevice {
+    type Error = actix_web::http::header::InvalidHeaderValue;
+
+    fn try_into_value(self) -> Result<http::header::HeaderValue, Self::Error> {
+        Ok(http::header::HeaderValue::from_static(
+            if self.authorized {
+                "1"
+            } else {
+                "0"
+            }
+        ))
+    }
+}
+
+impl http::header::Header for XAuthorizedDevice {
+    fn name() -> http::header::HeaderName {
+        http::header::HeaderName::from_static("x-authorized-device")
+    }
+
+    fn parse<M: actix_web::HttpMessage>(msg: &M) -> Result<Self, actix_web::error::ParseError> {
+        match msg.headers().get(Self::name()) {
+            Some(value) => {
+                match value.to_str() {
+                    Ok(str_value) =>
+                        Some(str_value.eq_ignore_ascii_case("true")
+                        || str_value.eq_ignore_ascii_case("1")),
+                    Err(_) => None
+                }
+            },
+            None => Some(false)
+        }.map_or(Err(actix_web::error::ParseError::Header), 
+            |v| Ok(XAuthorizedDevice { authorized: v }))
+    }
+}
+
 fn fetch_measurements(db: &db::DbState, query: &GetMeasurementsQuery) -> std::io::Result<Vec<rstation::Measurement>> {
     let res = if query.from.is_some() || query.to.is_some() {
         let ms = db::fetch_measurements_by_ts(db, (
@@ -67,7 +107,11 @@ fn fetch_measurements(db: &db::DbState, query: &GetMeasurementsQuery) -> std::io
 }
 
 #[post("/api/measurements")]
-async fn post_measurements(req_body: Bytes, data: web::Data<db::DbState>) -> Result<HttpResponse, std::io::Error> {
+async fn post_measurements(req_body: Bytes, data: web::Data<db::DbState>,
+        authorized_device: Header<XAuthorizedDevice>) -> Result<HttpResponse, std::io::Error> {
+    if !authorized_device.authorized {
+        return Ok(HttpResponse::Forbidden().finish())
+    }
     let ms = rstation::MeasurementSet::decode(req_body)?;
     let sz = ms.measurements.len();
     db::insert_measurements(ms.measurements, &*data)?;
@@ -96,7 +140,11 @@ async fn main() -> std::io::Result<()> {
     let num_workers = std::env::var("APP_WORKERS")
         .map_or(2, |s| s.parse::<usize>().unwrap());
 
-    let db = sled::open(db_path).unwrap();
+    let db = sled::Config::default()
+        .path(db_path)
+        .cache_capacity(128*1024*1024)
+        .open()
+        .unwrap();
     let db_state = web::Data::new(db::DbState::new(&db).unwrap());
     HttpServer::new(move || {
         App::new()
