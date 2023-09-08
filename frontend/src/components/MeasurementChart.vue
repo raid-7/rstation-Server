@@ -221,7 +221,7 @@ function reload(full) {
         });
 }
 
-watch(props.viewPeriod, () => {
+watch(() => props.viewPeriod, () => {
     reload(true);
 }, { immediate: true })
 
