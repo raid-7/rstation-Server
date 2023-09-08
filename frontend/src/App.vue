@@ -46,6 +46,7 @@ let viewPeriod = computed(() => {
   if (vpMs) {
     res.movingWindowMs = vpMs;
   }
+  return res;
 });
 </script>
 
