@@ -179,7 +179,7 @@ function reload(full) {
     } else {
         if (typeof viewPeriod.fromMs == 'number')
             fromTs = viewPeriod.fromMs * 1000;
-        if (typeof viewPeriod.fromMs == 'number')
+        if (typeof viewPeriod.toMs == 'number')
             toTs = viewPeriod.toMs * 1000;
         else if (!full && lastUpdateTs) {
             fromTs = lastUpdateTs;
