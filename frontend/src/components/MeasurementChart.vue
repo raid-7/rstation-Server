@@ -19,9 +19,9 @@ const props = defineProps({
         type: Number,
         default: 2
     },
-    'viewPeriodMs': {
-        type: Number,
-        default: 10 * 60 * 1000
+    'viewPeriod': {
+        type: Object,
+        default: { movingWindowMs : 10 * 60 * 1000 }
     },
     'fetchIntervalMs': {
         type: Number,
@@ -29,7 +29,6 @@ const props = defineProps({
     }
 });
 const lineChart = ref(null);
-const viewPeriodMs = computed(() => props.viewPeriodMs);
 const currentValue = ref(undefined);
 const visibleCurrentValue = computed(() => {
     if (currentValue.value === undefined) {
@@ -79,7 +78,13 @@ async function fetchData(sensor, from, to) {
 }
 
 function updateDatasets(datasets, data, maxTimestampUs) {
-    let minViewTsUs = maxTimestampUs - viewPeriodMs.value * 1000;
+    let minViewTsUs = undefined;
+    const viewPeriod = props.viewPeriod;
+    if (typeof viewPeriod.movingWindowMs == 'number') {
+        minViewTsUs = maxTimestampUs - viewPeriod.movingWindowMs * 1000;
+    } else if (typeof viewPeriod.fromMs == 'number') {
+        minViewTsUs = viewPeriod.fromMs * 1000;
+    }
     let current = {};
     for (let ds of datasets) {
         current[ds.label] = ds.data;
@@ -95,8 +100,10 @@ function updateDatasets(datasets, data, maxTimestampUs) {
             });
         }
         ds.push(...data[sensor]);
-        let toRemove = 0;
-        for (; toRemove < ds.length && ds[toRemove].timestampUs < minViewTsUs; toRemove++);
+        if (viewPeriod.fromMs !== null) {
+            let toRemove = 0;
+            for (; toRemove < ds.length && ds[toRemove].timestampUs < minViewTsUs; toRemove++);
+        }
         ds.splice(0, toRemove);
     }
 }
@@ -163,10 +170,19 @@ function reload(full) {
     fetchAbortHandle = abortHandle;
     
     const lastFetchRequestTime = new Date();
-    const fromTs = full
-        ? (new Date() - viewPeriodMs.value) * 1000
-        : Math.max((new Date() - viewPeriodMs.value) * 1000, lastUpdateTs);
-    fetchData(props.sensor, fromTs)
+    const viewPeriod = props.viewPeriod;
+    let fromTs, toTs;
+    if (typeof viewPeriod.movingWindowMs == 'number') {
+        fromTs = full
+            ? (new Date() - viewPeriod.movingWindowMs) * 1000
+            : Math.max((new Date() - viewPeriod.movingWindowMs) * 1000, lastUpdateTs);
+    } else {
+        if (typeof viewPeriod.fromMs == 'number')
+            fromTs = viewPeriod.fromMs * 1000;
+        if (typeof viewPeriod.fromMs == 'number')
+            toTs = viewPeriod.toMs * 1000;
+    }
+    fetchData(props.sensor, fromTs, toTs)
         .then((data) => {
             if (abortHandle.abort)
                 return;
@@ -178,20 +194,21 @@ function reload(full) {
                 lastUpdateTs = data.lastMeasurement.timestampUs + 1;
             }
 
-            const nextReload = () => {
-                if (!abortHandle.abort)
-                    reload();
-            };
-            if (lineChart.value) {
-                setTimeout(nextReload, nextFetchDelay);
+            const whenMounted = () => {
+                if (abortHandle.abort)
+                    return;
+                if (!toTs)
+                    setTimeout(() => {
+                        if (!abortHandle.abort)
+                            reload();
+                    }, nextFetchDelay);
                 updateChart(data, full);
+            };
+
+            if (lineChart.value) {
+                whenMounted();
             } else {
-                onMounted(() => {
-                    if (abortHandle.abort)
-                        return;
-                    setTimeout(nextReload, nextFetchDelay);
-                    updateChart(data, full);
-                });
+                onMounted(whenMounted);
             }
         })
         .catch((error) => {
@@ -204,7 +221,7 @@ function reload(full) {
         });
 }
 
-watch(viewPeriodMs, (nv) => {
+watch(props.viewPeriod, () => {
     reload(true);
 }, { immediate: true })
 
