@@ -181,6 +181,9 @@ function reload(full) {
             fromTs = viewPeriod.fromMs * 1000;
         if (typeof viewPeriod.fromMs == 'number')
             toTs = viewPeriod.toMs * 1000;
+        else if (!full && lastUpdateTs) {
+            fromTs = lastUpdateTs;
+        }
     }
     fetchData(props.sensor, fromTs, toTs)
         .then((data) => {
