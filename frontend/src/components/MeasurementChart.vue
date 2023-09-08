@@ -103,8 +103,8 @@ function updateDatasets(datasets, data, maxTimestampUs) {
         if (viewPeriod.fromMs !== null) {
             let toRemove = 0;
             for (; toRemove < ds.length && ds[toRemove].timestampUs < minViewTsUs; toRemove++);
+            ds.splice(0, toRemove);
         }
-        ds.splice(0, toRemove);
     }
 }
 
