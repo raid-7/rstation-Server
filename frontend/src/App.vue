@@ -94,18 +94,33 @@ const viewPeriod = computed(() => {
   display: flex;
   justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
 .common-settings button {
   min-width: 37px;
+  flex-grow: 0;
+  border: none;
+  cursor: pointer;
+  border-color: #bbb;
+  border-style: solid;
+  border-width: 1px;
+  background-color: transparent;
+}
+.common-settings button:hover {
+  /* font-weight: bold; */
+  background-color: #cacacacc;
 }
 .common-settings button.active {
   font-weight: bold;
+  background-color: #cacacacc;
 }
 .common-settings .view-range-picker {
-  .min-width: 160px;
+  box-sizing: border-box;
+  min-width: 180px;
+  flex-basis: 360px;
+  flex-grow: 1;
 }
 
 .charts {
