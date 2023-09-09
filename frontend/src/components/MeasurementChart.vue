@@ -141,7 +141,7 @@ const chartOptions = {
                 displayFormats: {
                     second: 'HH:mm:ss',
                     minute: 'HH:mm',
-                    hour: 'HH:mm DD MMM',
+                    hour: 'DD MMM HH:mm',
                     day: 'DD MMM YYYY'
                 }
             }
@@ -244,29 +244,42 @@ window.reloadData = () => {
             <Line class="chart" ref="lineChart" :options="chartOptions" :data="chartData" />
         </div>
         <div class="stats-container">
-            <div style="font-family: 'Courier New', Courier, monospace;">Current value: {{ visibleCurrentValue }}</div>
+            <div class="stats-header">Current value:</div>
+            <div class="stats-value">{{ visibleCurrentValue }}</div>
         </div>
     </div>
 </template>
 
 <style scoped>
 .container {
-    height: 300px;
+    height: 280px;
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;
     align-items: stretch;
-    gap: 20px;
+    gap: 32px;
 }
 .stats-container {
-    min-width: 220px;
-    width: fit-content;
-    flex-shrink: 1;
-    flex-grow: 0.1;
+    width: max-content;
+    flex-shrink: 0;
+    flex-grow: 0;
 
     display: flex;
     flex-direction: column;
 }
+.stats-container .stats-header {
+    width: max-content;
+    font-family: 'Sono', sans-serif;
+    font-size: 18px;
+    font-weight: 300;
+}
+.stats-container .stats-value {
+    width: max-content;
+    font-family: 'Sono', sans-serif;
+    font-size: 32px;
+    font-weight: 400;
+}
+
 .chart-container {
     flex-grow: 1;
     flex-shrink: 1;

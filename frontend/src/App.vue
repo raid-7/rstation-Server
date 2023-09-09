@@ -35,7 +35,19 @@ function viewPeriodRangeSelected() {
   }
 }
 
-let viewPeriod = computed(() => {
+function maxAllowedDateForViewRange() {
+  let date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(0);
+  date.setMinutes(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+  date = new Date(date - 1);
+  let curDate = new Date();
+  return curDate < date ? date : curDate;
+}
+
+const viewPeriod = computed(() => {
   let vpRange = viewPeriodRange.value;
   let vpMs = viewPeriodMs.value;
   let res = {};
@@ -53,11 +65,11 @@ let viewPeriod = computed(() => {
 <template>
   <div id="app-container">
     <div class="common-settings">
-      <div><b>View Period: </b></div>
+      <div style="align-self: center; width: max-content; flex-shrink: 0;">View Period: </div>
       <button @click="viewPeriodButtonClick" v-for="conf in viewPeriods" :data-value="conf.value"
         :class="{ active: isViewPeriodButtonActive(conf.value) }">{{ conf.label }}</button>
       <VueDatePicker v-model="viewPeriodRange" @update:model-value="viewPeriodRangeSelected" range time-picker-inline
-        :max-date="new Date()" />
+        :max-date="maxAllowedDateForViewRange()" position="left" class="view-range-picker" />
     </div>
     <div class="charts">
       <MeasurementChart sensor="temperature." :view-period="viewPeriod" unit="&deg;C" :precision="1" />
@@ -82,8 +94,12 @@ let viewPeriod = computed(() => {
   display: flex;
   justify-content: flex-start;
   gap: 20px;
+  margin-bottom: 12px;
 }
 
+.common-settings button {
+  min-width: 37px;
+}
 .common-settings button.active {
   font-weight: bold;
 }
@@ -93,7 +109,6 @@ let viewPeriod = computed(() => {
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
-  gap: 20px;
 }
 
 .charts MeasurementChart {
@@ -101,6 +116,8 @@ let viewPeriod = computed(() => {
 }
 
 .charts .glue {
+  margin-top: 8px;
+  margin-bottom: 20px;
   height: 3px;
   background: rgb(114, 114, 114);
   background: radial-gradient(ellipse 70% 19% at 40% 50%, rgba(150, 150, 150, 0.6) 0%, rgba(150, 150, 150, 0.6) 70%, rgba(255, 255, 255, 0.6) 100%);
