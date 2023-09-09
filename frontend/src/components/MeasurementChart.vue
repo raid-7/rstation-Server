@@ -21,7 +21,7 @@ const props = defineProps({
     },
     'viewPeriod': {
         type: Object,
-        default: { movingWindowMs : 10 * 60 * 1000 }
+        default: { movingWindowMs: 10 * 60 * 1000 }
     },
     'fetchIntervalMs': {
         type: Number,
@@ -170,7 +170,7 @@ function reload(full) {
     fetchAbortHandle.abort = true;
     let abortHandle = {};
     fetchAbortHandle = abortHandle;
-    
+
     const lastFetchRequestTime = new Date();
     const viewPeriod = props.viewPeriod;
     let fromTs, toTs;
@@ -257,8 +257,9 @@ window.reloadData = () => {
     flex-direction: row;
     justify-content: space-evenly;
     align-items: stretch;
-    gap: 32px;
+    gap: 24px;
 }
+
 .stats-container {
     width: max-content;
     flex-shrink: 0;
@@ -267,12 +268,14 @@ window.reloadData = () => {
     display: flex;
     flex-direction: column;
 }
+
 .stats-container .stats-header {
     width: max-content;
     font-family: 'Sono', sans-serif;
     font-size: 18px;
     font-weight: 300;
 }
+
 .stats-container .stats-value {
     width: max-content;
     font-family: 'Sono', sans-serif;
@@ -283,5 +286,20 @@ window.reloadData = () => {
 .chart-container {
     flex-grow: 1;
     flex-shrink: 1;
+    position: relative;
 }
-</style>
+
+
+@media (max-width: 980px) {
+    .container {
+        flex-wrap: wrap-reverse;
+    }
+
+    .stats-container {
+        flex-direction: row;
+    }
+
+    .stats-container .stats-value {
+        font-size: 18px;
+    }
+}</style>
