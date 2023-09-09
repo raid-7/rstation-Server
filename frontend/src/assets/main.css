@@ -1,9 +1,5 @@
 @import './base.css';
 
-body {
-  margin: 20px;
-}
-
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -30,6 +26,7 @@ a,
     display: flex;
     justify-content: center;
     align-items: flex-start;
+    margin: 20px;
   }
 
   #app {
