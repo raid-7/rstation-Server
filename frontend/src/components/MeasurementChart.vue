@@ -43,7 +43,7 @@ async function fetchData(sensor, from, to) {
         sensor: sensor,
         from: from,
         to: to,
-        max_num_points_per_sensor: 500
+        max_num_points: 400
     };
     let apiAddr = location.protocol + "//" + location.host + "/api/measurements";
     let reqAddr = apiAddr + "?" + Object.entries(params)

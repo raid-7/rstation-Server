@@ -38,7 +38,7 @@ struct GetMeasurementsQuery {
     sensor: Option<String>,
     from: Option<u64>,
     to: Option<u64>,
-    max_num_points_per_sensor: Option<usize>
+    max_num_points: Option<usize>
 }
 
 #[derive(Clone)]
@@ -98,7 +98,7 @@ fn fetch_measurements(db: &db::DbState, query: &GetMeasurementsQuery) -> std::io
     } else {
         db::fetch_all_measurements(db)?
     };
-    let res = if let Some(limit) = query.max_num_points_per_sensor {
+    let res = if let Some(limit) = query.max_num_points {
         prune_measurements(res, limit)
     } else {
         res
