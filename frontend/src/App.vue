@@ -87,19 +87,20 @@ const viewPeriod = computed(() => {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 20px;
+  row-gap: 20px;
 }
 
 .common-settings {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
+  column-gap: 16px;
+  row-gap: 12px;
   margin-bottom: 12px;
 }
 
 .common-settings button {
-  min-width: 37px;
+  /* min-width: 37px; */
   flex-grow: 0;
   border: none;
   cursor: pointer;
