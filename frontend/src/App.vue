@@ -65,7 +65,7 @@ const viewPeriod = computed(() => {
 <template>
   <div id="app-container">
     <div class="common-settings">
-      <div style="align-self: center; width: max-content; flex-shrink: 0;">View Period: </div>
+      <div style="align-self: center; width: max-content; flex-shrink: 0; font-size: 18px;">View Period: </div>
       <button @click="viewPeriodButtonClick" v-for="conf in viewPeriods" :data-value="conf.value"
         :class="{ active: isViewPeriodButtonActive(conf.value) }">{{ conf.label }}</button>
       <VueDatePicker v-model="viewPeriodRange" @update:model-value="viewPeriodRangeSelected" range time-picker-inline
@@ -93,6 +93,7 @@ const viewPeriod = computed(() => {
 .common-settings {
   display: flex;
   justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 20px;
   margin-bottom: 12px;
 }
@@ -102,6 +103,9 @@ const viewPeriod = computed(() => {
 }
 .common-settings button.active {
   font-weight: bold;
+}
+.common-settings .view-range-picker {
+  .min-width: 160px;
 }
 
 .charts {
