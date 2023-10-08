@@ -78,7 +78,7 @@ const viewPeriod = computed(() => {
       <div class="glue"></div>
       <MeasurementChart sensor="humidity." :view-period="viewPeriod" unit="%" :precision="1" />
       <div class="glue"></div>
-      <MeasurementChart sensor="adc" :view-period="viewPeriod" unit="V" :precision="3" />
+      <MeasurementChart sensor="pressure." :view-period="viewPeriod" unit="Pa" :precision="1" />
     </div>
   </div>
 </template>
