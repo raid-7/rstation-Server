@@ -32,7 +32,8 @@ const lineChart = ref(null);
 const lastMeasurementBySensor = {};
 const currentValue = ref(undefined);
 const visibleCurrentValue = computed(() => {
-    if (currentValue.value === undefined) {
+    if (currentValue.value === undefined || currentValue.value === null
+        || typeof props.viewPeriod.toMs == 'number') {
         return "unknown";
     } else {
         return currentValue.value.toFixed(props.precision) + props.unit;
@@ -114,8 +115,14 @@ function computeAggregateCurrentValue(data) {
         let ms = data.data[sensor];
         if (ms.length == 0)
             continue;
-        lastMeasurementBySensor[sensor] = ms[ms.length - 1];
+        let mCur = lastMeasurementBySensor[sensor];
+        let mNew = ms[ms.length - 1];
+        if (!mCur || mCur.timestampUs < mNew.timestampUs) {
+            lastMeasurementBySensor[sensor] = ms[ms.length - 1];
+        }
     }
+    if (!data.lastMeasurement)
+        return null;
     let sum = 0;
     let count = 0;
     for (let sensor in lastMeasurementBySensor) {
@@ -132,6 +139,7 @@ function computeAggregateCurrentValue(data) {
 
 function updateChart(data, full) {
     if (full) {
+        lastMeasurementBySensor = {};
         lineChart.value.chart.data.datasets = [];
     }
     if (data.lastMeasurement) { // not empty
