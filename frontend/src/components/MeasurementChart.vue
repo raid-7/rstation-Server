@@ -136,7 +136,7 @@ function updateChart(data, full) {
     }
     if (data.lastMeasurement) { // not empty
         updateDatasets(lineChart.value.chart.data.datasets, data.data, data.lastMeasurement.timestampUs);
-        currentValue.value = getAggregateCurrentValue(data);
+        currentValue.value = computeAggregateCurrentValue(data);
     }
     if (full || data.lastMeasurement) {
         lineChart.value.chart.update();
