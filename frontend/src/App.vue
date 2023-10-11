@@ -6,9 +6,9 @@ import { computed, ref, watch } from 'vue'
 
 const sensors = ['random.', 'adc'];
 const viewPeriods = [
-  { value: 10000, label: '10s' },
   { value: 600000, label: '10m' },
   { value: 3600000, label: '1h' },
+  { value: 8 * 3600000, label: '8h' },
   { value: 24 * 3600000, label: '24h' },
   { value: 7 * 24 * 3600000, label: '7d' }
 ];
