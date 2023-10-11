@@ -109,7 +109,7 @@ function updateDatasets(datasets, data, maxTimestampUs) {
     }
 }
 
-function computeAggregateCurrentValue() {
+function computeAggregateCurrentValue(data) {
     for (let sensor in data.data) {
         let ms = data.data[sensor];
         if (ms.length == 0)
