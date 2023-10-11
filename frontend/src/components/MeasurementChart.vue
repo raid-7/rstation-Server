@@ -58,7 +58,6 @@ async function fetchData(sensor, from, to) {
     console.log("Received measurements", params, data);
     let res = {};
     let lastMeasurement = null;
-    let lastMeasurementBySensor = {};
     for (let m of data.measurements) {
         let mObj = rstation.Measurement.toObject(m);
         if (!mObj.hasOwnProperty('sensor') || !mObj.hasOwnProperty('timestampUs'))
@@ -71,12 +70,10 @@ async function fetchData(sensor, from, to) {
             res[m.sensor] = [];
         res[m.sensor].push(mObj);
         lastMeasurement = mObj;
-        lastMeasurementBySensor[m.sensor] = mObj;
     }
     return {
         data: res,
-        lastMeasurement: lastMeasurement,
-        lastMeasurementBySensor: lastMeasurementBySensor
+        lastMeasurement: lastMeasurement
     };
 }
 
@@ -116,13 +113,17 @@ function getAggregateCurrentValue(data) {
         return null;
     let sum = 0;
     let count = 0;
-    for (let sensor in data.lastMeasurementBySensor) {
-        let m = data.lastMeasurementBySensor[sensor];
+    for (let sensor in data.data) {
+        let ms = data.data[sensor];
+        if (ms.length == 0)
+            continue;
+        let m = ms[ms.length - 1];
         if (m.timestampMs > data.lastMeasurement.timestampMs - 60 * 1000) {
             sum += m.value;
             count++;
         }
     }
+    console.log(sum, count);
     return sum / count;
 }
 
