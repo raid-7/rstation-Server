@@ -58,6 +58,7 @@ async function fetchData(sensor, from, to) {
     console.log("Received measurements", params, data);
     let res = {};
     let lastMeasurement = null;
+    let lastMeasurementBySensor = {};
     for (let m of data.measurements) {
         let mObj = rstation.Measurement.toObject(m);
         if (!mObj.hasOwnProperty('sensor') || !mObj.hasOwnProperty('timestampUs'))
@@ -70,10 +71,12 @@ async function fetchData(sensor, from, to) {
             res[m.sensor] = [];
         res[m.sensor].push(mObj);
         lastMeasurement = mObj;
+        lastMeasurementBySensor[m.sensor] = mObj;
     }
     return {
         data: res,
-        lastMeasurement: lastMeasurement
+        lastMeasurement: lastMeasurement,
+        lastMeasurementBySensor: lastMeasurementBySensor
     };
 }
 
@@ -108,13 +111,28 @@ function updateDatasets(datasets, data, maxTimestampUs) {
     }
 }
 
+function getAggregateCurrentValue(data) {
+    if (!data.lastMeasurement)
+        return null;
+    let sum = 0;
+    let count = 0;
+    for (let sensor in data.lastMeasurementBySensor) {
+        let m = data.lastMeasurementBySensor[sensor];
+        if (m.timestampMs > data.lastMeasurement.timestampMs - 60 * 1000) {
+            sum += m.value;
+            count++;
+        }
+    }
+    return sum / count;
+}
+
 function updateChart(data, full) {
     if (full) {
         lineChart.value.chart.data.datasets = [];
     }
     if (data.lastMeasurement) { // not empty
         updateDatasets(lineChart.value.chart.data.datasets, data.data, data.lastMeasurement.timestampUs);
-        currentValue.value = data.lastMeasurement.value;
+        currentValue.value = getAggregateCurrentValue(data);
     }
     if (full || data.lastMeasurement) {
         lineChart.value.chart.update();
