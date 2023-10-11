@@ -139,7 +139,9 @@ function computeAggregateCurrentValue(data) {
 
 function updateChart(data, full) {
     if (full) {
-        lastMeasurementBySensor = {};
+        for (const sensor in lastMeasurementBySensor) {
+           delete lastMeasurementBySensor[sensor];
+        }
         lineChart.value.chart.data.datasets = [];
     }
     if (data.lastMeasurement) { // not empty
