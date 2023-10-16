@@ -33,7 +33,7 @@ const lastMeasurementBySensor = {};
 const currentValue = ref(undefined);
 const visibleCurrentValue = computed(() => {
     if (currentValue.value === undefined || currentValue.value === null
-        || typeof props.viewPeriod.toMs == 'number') {
+        || typeof props.viewPeriod.toMs == 'number') { // TODO rework hiding current value
         return "unknown";
     } else {
         return currentValue.value.toFixed(props.precision) + props.unit;
