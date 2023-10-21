@@ -1,7 +1,9 @@
 use r_station::db;
+use r_station::device_logs;
 use r_station::rstation;
 
 use std::ops::Bound;
+use std::sync::{Mutex, Arc};
 
 use actix_web::{get, post, web::{self, Bytes, Header}, http, App, HttpResponse, HttpServer};
 use actix_files::Files;
@@ -131,6 +133,51 @@ async fn get_measurements(data: web::Data<db::DbState>, query: web::Query<GetMea
     )
 }
 
+type LogState = Arc<Mutex<device_logs::DeviceLogs>>;
+
+#[derive(Deserialize)]
+struct LogQuery {
+    start_id: Option<u64>
+}
+
+#[post("/api/logs")]
+async fn post_logs(req_body: String, logState: web::Data<LogState>,
+        authorized_device: Header<XAuthorizedDevice>) -> Result<HttpResponse, std::io::Error> {
+    if !authorized_device.authorized {
+        return Ok(HttpResponse::Forbidden().finish())
+    }
+    let logs = logState.lock().unwrap();
+    for line in req_body.split('\n') {
+        logs.add_log(line.trim().to_owned());
+    }
+    Ok(
+        HttpResponse::Ok().finish()
+    )
+}
+
+#[get("/api/logs")]
+async fn get_logs(log_state: web::Data<LogState>) -> Result<HttpResponse, std::io::Error> {
+    let logs = log_state.lock().unwrap();
+    let mut s = logs.get_logs().into_iter().join("\n");
+    s.push('\n');
+    Ok(
+        HttpResponse::Ok().content_type("text/plain").body(s)
+    )
+}
+
+#[get("/api/meta")]
+async fn get_metadata(data: web::Data<db::DbState>, query: web::Query<GetMeasurementsQuery>) -> Result<HttpResponse, std::io::Error> {
+    let response = rstation::MeasurementSet {
+        measurements: fetch_measurements(&*data, &*query)?
+    };
+    let body = response.encode_to_vec();
+    Ok(
+        HttpResponse::Ok()
+            .content_type("application/protobuf")
+            .body(body)
+    )
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -146,8 +193,10 @@ async fn main() -> std::io::Result<()> {
         .open()
         .unwrap();
     let db_state = web::Data::new(db::DbState::new(&db).unwrap());
+    let log_state = web::Data::new(LogState::default());
     HttpServer::new(move || {
         App::new()
+            .app_data(log_state.clone())
             .app_data(db_state.clone())
             .service(get_measurements)
             .service(post_measurements)

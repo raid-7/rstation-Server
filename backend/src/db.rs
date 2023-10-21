@@ -109,20 +109,6 @@ fn ts_bound_to_key(bound: Bound<&u64>, end: bool) -> Bound<[u8; 8]> {
     }
 }
 
-pub fn fetch_measurements_by_ts(db: &DbState, ts: impl RangeBounds<u64>) -> std::io::Result<Vec<rstation::Measurement>> {
-    let begin_buf = ts_bound_to_key(ts.start_bound(), false);
-    let end_buf = ts_bound_to_key(ts.end_bound(), true);
-    iter_to_vec(db.ts_prefixed_tree.range((begin_buf, end_buf)), true)
-}
-
-pub fn fetch_measurements_by_sensor(db: &DbState, sensor_prefix: &String) -> std::io::Result<Vec<rstation::Measurement>> {
-    iter_to_vec(db.sensor_prefixed_tree.scan_prefix(sensor_prefix.as_bytes()), false)
-}
-
-pub fn fetch_all_measurements(db: &DbState) -> std::io::Result<Vec<rstation::Measurement>> {
-    iter_to_vec(db.ts_prefixed_tree.iter(), true)
-}
-
 fn iter_to_vec(iter: sled::Iter, ts_prefixed: bool) -> std::io::Result<Vec<rstation::Measurement>> {
     let mut res = Vec::new();
     for m_res in iter {
@@ -151,6 +137,19 @@ fn iter_to_vec(iter: sled::Iter, ts_prefixed: bool) -> std::io::Result<Vec<rstat
     Ok(res)
 }
 
+pub fn fetch_measurements_by_ts(db: &DbState, ts: impl RangeBounds<u64>) -> std::io::Result<Vec<rstation::Measurement>> {
+    let begin_buf = ts_bound_to_key(ts.start_bound(), false);
+    let end_buf = ts_bound_to_key(ts.end_bound(), true);
+    iter_to_vec(db.ts_prefixed_tree.range((begin_buf, end_buf)), true)
+}
+
+pub fn fetch_measurements_by_sensor(db: &DbState, sensor_prefix: &String) -> std::io::Result<Vec<rstation::Measurement>> {
+    iter_to_vec(db.sensor_prefixed_tree.scan_prefix(sensor_prefix.as_bytes()), false)
+}
+
+pub fn fetch_all_measurements(db: &DbState) -> std::io::Result<Vec<rstation::Measurement>> {
+    iter_to_vec(db.ts_prefixed_tree.iter(), true)
+}
 
 #[cfg(test)]
 mod tests {
