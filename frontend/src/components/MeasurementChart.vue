@@ -32,8 +32,7 @@ const lineChart = ref(null);
 const lastMeasurementBySensor = {};
 const currentValue = ref(undefined);
 const visibleCurrentValue = computed(() => {
-    if (currentValue.value === undefined || currentValue.value === null
-        || typeof props.viewPeriod.toMs == 'number') { // TODO rework hiding current value
+    if (currentValue.value === undefined || currentValue.value === null) {
         return "unknown";
     } else {
         return currentValue.value.toFixed(props.precision) + props.unit;
@@ -110,9 +109,9 @@ function updateDatasets(datasets, data, maxTimestampUs) {
     }
 }
 
-function computeAggregateCurrentValue(data) {
-    for (let sensor in data.data) {
-        let ms = data.data[sensor];
+function updateAggregateCurrentValue(data) {
+    for (let sensor in data) {
+        let ms = data[sensor];
         if (ms.length == 0)
             continue;
         let mCur = lastMeasurementBySensor[sensor];
@@ -121,20 +120,21 @@ function computeAggregateCurrentValue(data) {
             lastMeasurementBySensor[sensor] = ms[ms.length - 1];
         }
     }
-    if (!data.lastMeasurement)
-        return null;
+
+    let currentTimestamp = (new Date()).getTime();
     let sum = 0;
     let count = 0;
     for (let sensor in lastMeasurementBySensor) {
         let m = lastMeasurementBySensor[sensor];
-        if (m.timestampMs > data.lastMeasurement.timestampMs - 60 * 1000) {
+        if (m.timestampMs > currentTimestamp - 60 * 1000) {
             sum += m.value;
             count++;
         }
     }
+
     if (count == 0)
-        return null;
-    return sum / count;
+        currentValue.value = null;
+    currentValue.value = sum / count;
 }
 
 function updateChart(data, full) {
@@ -146,7 +146,7 @@ function updateChart(data, full) {
     }
     if (data.lastMeasurement) { // not empty
         updateDatasets(lineChart.value.chart.data.datasets, data.data, data.lastMeasurement.timestampUs);
-        currentValue.value = computeAggregateCurrentValue(data);
+        updateAggregateCurrentValue(data.data);
     }
     if (full || data.lastMeasurement) {
         lineChart.value.chart.update();
