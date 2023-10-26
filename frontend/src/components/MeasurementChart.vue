@@ -134,7 +134,8 @@ function updateAggregateCurrentValue(data) {
 
     if (count == 0)
         currentValue.value = null;
-    currentValue.value = sum / count;
+    else
+        currentValue.value = sum / count;
 }
 
 function updateChart(data, full) {
