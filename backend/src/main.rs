@@ -8,6 +8,7 @@ use actix_files::Files;
 use prost::Message;
 use itertools::Itertools;
 use serde::Deserialize;
+use chrono;
 
 
 fn prune_measurements(measurements: Vec<rstation::Measurement>, limit: usize) -> Vec<rstation::Measurement> {
@@ -131,6 +132,26 @@ async fn get_measurements(data: web::Data<db::DbState>, query: web::Query<GetMea
     )
 }
 
+fn prune_measurements_in_database(db: &db::DbState) {
+    let offset = chrono::Duration::days(30);
+    let gap = chrono::Duration::minutes(10);
+
+    let now = chrono::Utc::now();
+    let time_to_end = now - offset;
+    let ts_to_end = time_to_end.timestamp_micros().max(0) as u64;
+    let time_to_end_str = time_to_end.format("%d.%m.%Y %H:%M:%S").to_string();
+    let min_time_between_points = gap.num_microseconds().unwrap() as u64;
+
+    println!("Start pruning measurements until {time_to_end_str} UTC...");
+    let result = db::prune_measurements(db, ts_to_end, min_time_between_points, 2048);
+    let status = if let Err(err) = result {
+        format!("failure: {}", err.to_string())
+    } else {
+        "success".to_owned()
+    };
+    println!("Finished pruning measurements: {status}");
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -146,7 +167,13 @@ async fn main() -> std::io::Result<()> {
         .open()
         .unwrap();
     let db_state = web::Data::new(db::DbState::new(&db).unwrap());
-    HttpServer::new(move || {
+    
+    let db_state_to_prune = db_state.clone();
+    let prune_measurements_thread = std::thread::spawn(move || {
+        prune_measurements_in_database(db_state_to_prune.as_ref());
+    });
+
+    let server = HttpServer::new(move || {
         App::new()
             .app_data(db_state.clone())
             .service(get_measurements)
@@ -155,6 +182,9 @@ async fn main() -> std::io::Result<()> {
     })
     .workers(num_workers)
     .bind(("0.0.0.0", port))?
-    .run()
-    .await
+    .run();
+
+    prune_measurements_thread.join().unwrap();
+
+    server.await
 }

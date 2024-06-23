@@ -123,6 +123,61 @@ pub fn fetch_all_measurements(db: &DbState) -> std::io::Result<Vec<rstation::Mea
     iter_to_vec(db.ts_prefixed_tree.iter(), true)
 }
 
+pub fn prune_measurements(db: &DbState, ts_to_end: u64, min_time_between_points: u64, max_points_in_batch: u32) -> std::io::Result<()> {
+    let mut ts_to_start: u64 = 0;
+    let mut last_left_point_ts: u64 = 0;
+
+    while ts_to_start < ts_to_end {
+        let mut cnt: u32 = 0;
+        let mut cnt_to_remove: u32 = 0;
+        let mut ts_batch = sled::Batch::default();
+        let mut sensor_batch = sled::Batch::default();
+
+        let range = db.ts_prefixed_tree.range(
+            (ts_bound_to_key(Bound::Included(&ts_to_start), false), Bound::Unbounded));
+        for m_res in range {
+            let (m_key, m_enc) = m_res?;
+            let decoded_key = decode_ts_prefixed_key(&m_key);
+            match decoded_key {
+                Ok((ts, sensor)) => {
+                    ts_to_start = ts;
+                    if ts >= ts_to_end {
+                        break;
+                    }
+                    cnt += 1;
+
+                    if last_left_point_ts + min_time_between_points > ts {
+                        let mut m = rstation::Measurement::decode(&m_enc[..])?;
+                        m.sensor = sensor;
+                        m.timestamp_us = ts;
+                        ts_batch.remove(m_key);
+                        sensor_batch.remove(get_sensor_prefixed_key(&m));
+                        cnt_to_remove += 1;
+                    } else {
+                        last_left_point_ts = ts;
+                    }
+                },
+                Err(_) => {
+                    continue;
+                }
+            }
+
+            if cnt >= max_points_in_batch && cnt_to_remove > 0 {
+                break;
+            }
+        }
+
+        if cnt == 0 {
+            break;
+        }
+
+        db.ts_prefixed_tree.apply_batch(ts_batch)?;
+        db.sensor_prefixed_tree.apply_batch(sensor_batch)?;
+    }
+    Ok(())
+}
+
+
 fn iter_to_vec(iter: sled::Iter, ts_prefixed: bool) -> std::io::Result<Vec<rstation::Measurement>> {
     let mut res = Vec::new();
     for m_res in iter {
